@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Heart-failure call list</title>
+<style>
+:root{
+  --ink:#13294B; --paper:#FBFCFD; --line:#D5DCE5; --muted:#5B6B7F; --wash:#EEF2F7;
+  --high:#B42318; --high-bg:#FDECEA; --med:#9A4A05; --med-bg:#FEF3E2; --low:#2E6B47; --low-bg:#E8F4EC;
+  --focus:#0E7490;
+  --font:"Atkinson Hyperlegible","Segoe UI",system-ui,-apple-system,sans-serif;
+}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 var(--font)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.hidden{display:none!important}
+
+/* login */
+#login{min-height:100vh;display:grid;place-items:center;padding:24px}
+#login form{width:min(380px,100%);border-left:8px solid var(--high);background:#fff;padding:28px;
+  box-shadow:0 1px 0 var(--line)}
+#login h1{font-size:1.6rem;line-height:1.2;margin:0 0 6px}
+#login p{margin:0 0 20px;color:var(--muted)}
+label.field{display:block;margin-bottom:14px;font-weight:600}
+label.field input{display:block;width:100%;margin-top:4px;padding:10px 12px;border:1px solid var(--line);border-radius:4px;background:#fff}
+.btn{border:1px solid var(--ink);background:var(--ink);color:#fff;padding:9px 16px;border-radius:4px;cursor:pointer}
+.btn.quiet{background:transparent;color:var(--ink)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.err{color:var(--high);min-height:1.5em;margin:8px 0 0}
+
+/* app */
+header{display:flex;flex-wrap:wrap;gap:12px;align-items:baseline;justify-content:space-between;
+  padding:18px clamp(16px,4vw,40px);border-bottom:1px solid var(--line);background:#fff}
+header h1{margin:0;font-size:1.5rem;line-height:1.2}
+header .who{color:var(--muted)}
+.controls{display:flex;flex-wrap:wrap;gap:20px 32px;align-items:end;padding:16px clamp(16px,4vw,40px);background:var(--wash)}
+.controls label{font-weight:600;display:block}
+.slider{display:flex;align-items:center;gap:10px}
+.slider input{width:180px;accent-color:var(--ink)}
+.slider output{font-variant-numeric:tabular-nums;font-weight:700;font-size:1.25rem;min-width:2ch}
+.hint{display:block;font-weight:400;color:var(--muted);font-size:.875rem}
+.seg{display:inline-flex;border:1px solid var(--ink);border-radius:4px;overflow:hidden}
+.seg button{border:0;background:#fff;padding:8px 14px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--ink);color:#fff}
+.actions{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+
+main{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:32px;padding:24px clamp(16px,4vw,40px)}
+@media (max-width:900px){main{grid-template-columns:1fr}}
+
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:640px}
+caption{text-align:left;font-weight:700;font-size:1.125rem;padding-bottom:8px}
+th{text-align:left;font-size:.875rem;color:var(--muted);font-weight:600;padding:8px 10px;border-bottom:2px solid var(--ink)}
+td{padding:10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.num,th.num{text-align:right;font-variant-numeric:tabular-nums}
+tr.band-high td:first-child{box-shadow:inset 6px 0 0 var(--high)}
+tr.band-medium td:first-child{box-shadow:inset 6px 0 0 var(--med)}
+tr.band-low td:first-child{box-shadow:inset 6px 0 0 var(--low)}
+td.pid{white-space:nowrap}
+td.rank{font-weight:700;font-size:1.375rem;line-height:1;padding-left:16px;font-variant-numeric:tabular-nums;width:3.5rem}
+.pill{display:inline-block;padding:2px 10px;border-radius:999px;font-weight:700;font-variant-numeric:tabular-nums}
+.pill.high{background:var(--high-bg);color:var(--high)}
+.pill.medium{background:var(--med-bg);color:var(--med)}
+.pill.low{background:var(--low-bg);color:var(--low)}
+.chips{display:flex;flex-wrap:wrap;gap:4px}
+.chip{font-size:.8125rem;padding:1px 8px;border:1px solid var(--line);border-radius:4px;background:#fff}
+.chip.big{border-color:var(--high);color:var(--high);font-weight:600}
+.new{font-size:.75rem;font-weight:700;color:var(--focus);margin-left:6px;white-space:nowrap}
+
+aside h2{font-size:1.125rem;margin:0 0 10px}
+aside section{margin-bottom:28px}
+.bars{display:grid;gap:10px}
+.bar{display:grid;grid-template-columns:8.5rem 1fr 2.5rem;gap:8px;align-items:center;font-size:.9375rem}
+.bar .track{display:block;height:14px;background:var(--wash);border-radius:2px;overflow:hidden}
+.bar .fill{display:block;height:100%;background:var(--ink)}
+.bar .fill.base{background:var(--muted)}
+.bar b{text-align:right;font-variant-numeric:tabular-nums}
+.stat{font-size:.9375rem;margin:6px 0}
+.movers{list-style:none;padding:0;margin:0;font-size:.875rem}
+.movers li{padding:8px 0;border-bottom:1px solid var(--line)}
+.movers .tag{font-weight:700}
+.movers .up{color:var(--low)} .movers .down{color:var(--high)}
+.muted{color:var(--muted)}
+
+footer{padding:16px clamp(16px,4vw,40px) 32px;color:var(--muted);font-size:.875rem;border-top:1px solid var(--line)}
+footer strong{color:var(--ink)}
+
+dialog{border:1px solid var(--line);border-radius:6px;padding:0;width:min(760px,95vw)}
+dialog .head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--line)}
+dialog .body{max-height:60vh;overflow:auto;padding:0 18px 18px}
+dialog table{min-width:0;font-size:.875rem}
+dialog h2{margin:0;font-size:1.125rem}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--ink);color:#fff;padding:10px 16px;border-radius:4px}
+@media (prefers-reduced-motion:no-preference){.fill{transition:width .35s ease}}
+</style>
+</head>
+<body>
+
+<div id="login">
+  <form id="loginForm" autocomplete="on">
+    <h1>Heart-failure call list</h1>
+    <p>Sign in to see today's patients to call first.</p>
+    <label class="field">Username<input id="u" name="username" autocomplete="username" required></label>
+    <label class="field">Password<input id="p" name="password" type="password" autocomplete="current-password" required></label>
+    <button class="btn" type="submit">Sign in</button>
+    <p class="err" id="loginErr" role="alert"></p>
+  </form>
+</div>
+
+<div id="app" class="hidden">
+  <header>
+    <h1>Today's call list</h1>
+    <span class="who"><span id="who"></span> · <button class="btn quiet" id="logout" type="button">Sign out</button></span>
+  </header>
+
+  <div class="controls">
+    <div>
+      <label for="hi">Weak heart and kidney weight</label>
+      <div class="slider">
+        <input id="hi" type="range" min="1" max="5" step="1" value="2">
+        <output id="hiOut" for="hi">2</output>
+      </div>
+      <span class="hint">Points for low EF and for high creatinine. Default: <span id="defHi">2</span></span>
+    </div>
+    <div>
+      <span id="stratLabel" style="font-weight:600;display:block">Order by</span>
+      <div class="seg" role="group" aria-labelledby="stratLabel">
+        <button type="button" data-s="risk" aria-pressed="true">Risk score</button>
+        <button type="button" data-s="oldest" aria-pressed="false">Oldest first</button>
+      </div>
+    </div>
+    <div class="actions">
+      <button class="btn quiet" id="export" type="button">Download CSV</button>
+      <button class="btn quiet manager hidden" id="audit" type="button">Audit log</button>
+      <button class="btn manager hidden" id="save" type="button">Save weight as default</button>
+    </div>
+  </div>
+
+  <main>
+    <div class="tablewrap">
+      <table>
+        <caption id="caption">Top 25 patients to call</caption>
+        <thead><tr><th>#</th><th>Patient</th><th class="num">Age</th><th class="num">EF</th>
+          <th class="num">Creatinine</th><th>Score</th><th>Why they are on the list</th></tr></thead>
+        <tbody id="rows"><tr><td colspan="7" class="muted">Loading…</td></tr></tbody>
+      </table>
+    </div>
+
+    <aside>
+      <section>
+        <h2>Deaths caught in the top 25</h2>
+        <div class="bars" id="bars"></div>
+        <p class="stat muted" id="totals"></p>
+      </section>
+      <section>
+        <h2>What changed</h2>
+        <p class="stat" id="overlap"></p>
+        <ul class="movers" id="movers"></ul>
+      </section>
+    </aside>
+  </main>
+
+  <footer>
+    <p><strong>Prioritisation aid, not a diagnosis.</strong> It ranks who looks riskiest on paper from a small,
+      past dataset. Use clinical judgement for every call.</p>
+    <p id="cleaning"></p>
+  </footer>
+</div>
+
+<dialog id="auditDlg">
+  <div class="head"><h2>Audit log (latest 100)</h2><button class="btn quiet" id="closeAudit" type="button">Close</button></div>
+  <div class="body"><table><thead><tr><th>When (UTC)</th><th>User</th><th>Action</th><th>Detail</th></tr></thead>
+    <tbody id="auditRows"></tbody></table></div>
+</dialog>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = v => String(v).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+const state = { token: sessionStorage.getItem("hf_token"), user: JSON.parse(sessionStorage.getItem("hf_user") || "null"),
+                strategy: "risk", defaultHi: 2, defaultIds: new Set() };
+
+async function api(path, opts = {}) {
+  const res = await fetch(path, { ...opts, headers: { "Content-Type": "application/json",
+    ...(state.token ? { Authorization: "Bearer " + state.token } : {}), ...(opts.headers || {}) } });
+  if (res.status === 401 && state.token) { signOut("Your session ended. Sign in again."); throw new Error("401"); }
+  if (!res.ok) { let d = {}; try { d = await res.json(); } catch {} throw new Error(d.detail || res.statusText); }
+  return res;
+}
+
+function toast(msg) { const t = document.createElement("div"); t.className = "toast"; t.setAttribute("role","status");
+  t.textContent = msg; document.body.append(t); setTimeout(() => t.remove(), 2600); }
+
+$("#loginForm").onsubmit = async e => {
+  e.preventDefault(); $("#loginErr").textContent = "";
+  try {
+    const r = await (await api("/api/login", { method: "POST",
+      body: JSON.stringify({ username: $("#u").value.trim(), password: $("#p").value }) })).json();
+    state.token = r.token; state.user = { username: r.username, role: r.role };
+    sessionStorage.setItem("hf_token", r.token); sessionStorage.setItem("hf_user", JSON.stringify(state.user));
+    $("#p").value = ""; start();
+  } catch (err) { $("#loginErr").textContent = err.message; }
+};
+
+function signOut(msg) {
+  state.token = null; sessionStorage.clear();
+  $("#app").classList.add("hidden"); $("#login").classList.remove("hidden");
+  $("#loginErr").textContent = msg || "";
+}
+$("#logout").onclick = () => signOut();
+
+async function start() {
+  $("#login").classList.add("hidden"); $("#app").classList.remove("hidden");
+  $("#who").textContent = `${state.user.username} (${state.user.role})`;
+  document.querySelectorAll(".manager").forEach(el => el.classList.toggle("hidden", state.user.role !== "manager"));
+  try {
+    const s = await (await api("/api/status")).json();
+    state.defaultHi = s.active_weights.hi;
+    $("#hi").value = state.defaultHi; $("#hiOut").textContent = state.defaultHi; $("#defHi").textContent = state.defaultHi;
+    const c = s.cleaning;
+    $("#cleaning").textContent = `Data: ${c.rows_dropped} rows dropped, ${c.rows_kept} patients ranked` +
+      (c.flagged && c.flagged.length ? ` (flagged: ${c.flagged.join("; ")})` : "") + ".";
+    const def = await (await api("/api/calllist?hi=" + state.defaultHi)).json();
+    state.defaultIds = new Set(def.patients.map(p => p.patient_id));
+    await refresh();
+  } catch (err) { if (err.message !== "401") $("#rows").innerHTML = `<tr><td colspan="7">${esc(err.message)}</td></tr>`; }
+}
+
+async function refresh() {
+  const hi = Number($("#hi").value);
+  const [list, cmp] = await Promise.all([
+    api(`/api/calllist?hi=${hi}&strategy=${state.strategy}`).then(r => r.json()),
+    api(`/api/compare?hi=${state.defaultHi}&hi_revise=${hi}`).then(r => r.json())]);
+  renderList(list, hi); renderCompare(cmp, hi);
+}
+
+function renderList(list, hi) {
+  $("#caption").textContent = state.strategy === "risk"
+    ? `Top ${list.n} by risk score (weight ${hi})` : `Top ${list.n} oldest patients`;
+  const showNew = state.strategy === "risk" && hi !== state.defaultHi;
+  $("#rows").innerHTML = list.patients.map(p => `
+    <tr class="band-${esc(p.band)}">
+      <td class="rank">${p.rank}</td>
+      <td class="pid">P-${p.patient_id}${showNew && !state.defaultIds.has(p.patient_id) ? '<span class="new">new on list</span>' : ""}</td>
+      <td class="num">${p.age}</td><td class="num">${p.ef}%</td><td class="num">${p.creatinine.toFixed(2)}</td>
+      <td><span class="pill ${esc(p.band)}" title="${esc(p.band)} risk">${p.score}</span></td>
+      <td><div class="chips">${p.why.map(w => `<span class="chip ${/ejection|creatinine/i.test(w) ? "big" : ""}">${esc(w)}</span>`).join("") || '<span class="muted">No risk points</span>'}</div></td>
+    </tr>`).join("");
+}
+
+function renderCompare(c, hi) {
+  const data = [["Oldest first", c.deaths_oldest_first, "base"], [`Risk, weight ${c.weights_v1.hi}`, c.deaths_v1, ""]];
+  if (hi !== c.weights_v1.hi) data.push([`Risk, weight ${hi}`, c.deaths_revised, ""]);
+  $("#bars").innerHTML = data.map(([l, v, cls]) => `<div class="bar"><span>${esc(l)}</span>
+    <span class="track"><span class="fill ${cls}" style="width:${(v / c.n) * 100}%"></span></span><b>${v}</b></div>`).join("");
+  $("#totals").textContent = `Out of ${c.n} calls. ${c.total_deaths} of ${c.patients_ranked} patients died during follow-up. ` +
+    `Oldest-first and the risk list share only ${c.overlap_baseline_v1} patients.` + (c.note ? " " + c.note : "");
+
+  if (hi === c.weights_v1.hi) {
+    $("#overlap").textContent = `Move the weight slider to see who would join or leave the list.`;
+    $("#movers").innerHTML = ""; return;
+  }
+  $("#overlap").textContent = `Weight ${c.weights_v1.hi} → ${hi}: ${c.overlap_v1_revised} of ${c.n} patients stay on the list.`;
+  const line = (m, dir) => `<li><span class="tag ${dir === "up" ? "up" : "down"}">${dir === "up" ? "Joins" : "Leaves"}</span>
+    P-${m.patient_id}, rank ${m.rank_before} → ${m.rank_after}.
+    ${m.pump_and_kidney ? "Has both low EF and high creatinine." : "Points mostly from smaller factors."}
+    <span class="muted">${esc(m.why.join(", "))}</span></li>`;
+  $("#movers").innerHTML = c.rose.map(m => line(m, "up")).join("") + c.fell.map(m => line(m, "down")).join("")
+    || `<li class="muted">Same 25 patients; only the order changed.</li>`;
+}
+
+let timer;
+$("#hi").oninput = () => { $("#hiOut").textContent = $("#hi").value; clearTimeout(timer); timer = setTimeout(refresh, 150); };
+document.querySelectorAll(".seg button").forEach(b => b.onclick = () => {
+  state.strategy = b.dataset.s;
+  document.querySelectorAll(".seg button").forEach(x => x.setAttribute("aria-pressed", x === b));
+  refresh();
+});
+
+$("#export").onclick = async () => {
+  const blob = await (await api("/api/export.csv?hi=" + $("#hi").value)).blob();
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = "call_list.csv"; a.click();
+  URL.revokeObjectURL(a.href);
+};
+
+$("#save").onclick = async () => {
+  const hi = Number($("#hi").value);
+  try {
+    await api("/api/weights", { method: "PUT", body: JSON.stringify({ hi }) });
+    toast(`Saved. Default weight is now ${hi}.`); start();
+  } catch (err) { if (err.message !== "401") toast(err.message); }
+};
+
+$("#audit").onclick = async () => {
+  try {
+    const rows = await (await api("/api/audit")).json();
+    $("#auditRows").innerHTML = rows.map(r => `<tr><td>${esc(r.at)}</td><td>${esc(r.username || "unknown")}</td>
+      <td>${esc(r.action)}</td><td>${esc(r.detail || "")}</td></tr>`).join("");
+    $("#auditDlg").showModal();
+  } catch (err) { if (err.message !== "401") toast(err.message); }
+};
+$("#closeAudit").onclick = () => $("#auditDlg").close();
+
+if (state.token && state.user) start();
+</script>
+</body>
+</html>
